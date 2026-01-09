@@ -9,5 +9,6 @@ dependencies:
   - seaborn
   - jupyterlab
   - pip
+  - geopandas
   - pip:
       - plotly
