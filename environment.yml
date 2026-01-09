@@ -1,0 +1,13 @@
+name: dataviz
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - pip
+  - pip:
+      - plotly
