@@ -1,2 +1,16 @@
+# data
 data/
 
+# python environments
+venv/
+.venv/
+env/
+.conda/
+conda/
+__pycache__/
+
+# jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
