@@ -8,6 +8,7 @@ dependencies:
   - matplotlib
   - seaborn
   - jupyterlab
+  - geopandas
   - pip
   - pip:
       - plotly
