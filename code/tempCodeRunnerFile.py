@@ -1,2 +1,0 @@
-
-fig.update_layout(
