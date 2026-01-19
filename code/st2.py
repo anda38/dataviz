@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import streamlit as st
 
-from shapely.geometry import Point, LineString, Polygon, MultiPolygon
 
 
 # --------------------

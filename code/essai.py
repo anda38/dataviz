@@ -1,8 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt 
 import geopandas as gpd
-import shapely as shp
-from shapely.geometry import Point, LineString, Polygon, MultiPolygon
 import plotly.express as px
 import os
 
