@@ -21,16 +21,23 @@ generaliste_2023 = pd.read_excel(
 )
 print(generaliste_2023.head(10))
 
+generaliste_2023["Code commune INSEE"] = generaliste_2023["Code commune INSEE"].astype(str)
 generaliste_2023.columns
 
+generaliste_2023["Departement"] = generaliste_2023["Code commune INSEE"].str[:2]
+
+generaliste_2023["Departement"]
+
 communes = gpd.read_file("data/admincarto/livraison/COMMUNE.shp")
+arrondissements = gpd.read_file("data/admincarto/livraison/ARRONDISSEMENT_MUNICIPAL.shp")
+# head the first 10 lines of "NOM" column
+print(arrondissements["NOM"].head(10))
+
+arrondissements.columns
+communes["INSEE_COM"] = communes["INSEE_COM"].astype(str)
 
 communes.plot()
 plt.show()
-
-generaliste_2023["Code commune INSEE"] = generaliste_2023["Code commune INSEE"].astype(str)
-communes["INSEE_COM"] = communes["INSEE_COM"].astype(str)
-
 
 gdf = communes.merge(
     generaliste_2023,
@@ -38,6 +45,7 @@ gdf = communes.merge(
     right_on="Code commune INSEE",
     how="left"
 )
+gdf["DEP"] = gdf["INSEE_COM"].str[:2]
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -70,39 +78,46 @@ ax.axis("off")
 plt.show()
 
 
-gdf["DEP"] = gdf["INSEE_COM"].str[:2]
+departement = gpd.read_file("data/admincarto/livraison/DEPARTEMENT.shp")[["INSEE_DEP", "NOM", "geometry"]]
+
+departement["geometry"] = departement["geometry"].simplify(
+    tolerance=1000, preserve_topology=True
+)
 
 
-gdf_dep = gdf.dissolve(
-    by="DEP",
+gdf2 = departement.merge(
+    generaliste_2023,
+    left_on="INSEE_DEP",
+    right_on="Departement",
+    how="left"
+)
+
+gdf2.columns
+
+gdf_dep2 = gdf2.dissolve(
+    by="INSEE_DEP",
     aggfunc={
-        "APL aux médecins généralistes": "mean"
+        "APL aux médecins généralistes": "mean",
+        "NOM": "first"  
     }
+).reset_index()
+
+gdf_dep2 = gdf_dep2.to_crs(epsg=4326)
+
+gdf_dep2["APL aux médecins généralistes"] = pd.to_numeric(
+    gdf_dep2["APL aux médecins généralistes"], errors="coerce"
 )
-
-gdf_dep = gdf_dep.reset_index()
-gdf_dep["geometry"] = gdf_dep["geometry"].simplify(500)
-
-
-gdf_dep["APL aux médecins généralistes"] = pd.to_numeric(
-    gdf_dep["APL aux médecins généralistes"],
-    errors="coerce"
-)
-
-
-gdf_dep.crs = "EPSG:2154"
-gdf_dep = gdf_dep.to_crs("EPSG:4326")
 
 fig = px.choropleth_map(
-    gdf_dep,
-    geojson=gdf_dep.__geo_interface__,
-    locations="DEP",
-    featureidkey="properties.DEP",
+    gdf_dep2,
+    geojson=gdf_dep2.geometry,
+    locations=gdf_dep2.index,
     color="APL aux médecins généralistes",
     color_continuous_scale="Viridis",
     center={"lat": 46.6, "lon": 2.5},
+    zoom=4.8,
     map_style="carto-positron",
-    zoom=4.8
+    hover_name="NOM"   
 )
 
 fig.update_layout(
@@ -114,3 +129,4 @@ fig.update_layout(
 )
 
 fig.show()
+
