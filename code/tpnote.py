@@ -366,6 +366,242 @@ Cette absence de lien marqué souligne l’intérêt des visualisations pour exp
 à imposer des relations explicatives qui ne sont pas clairement soutenues par les résultats.
 """)
 
+
+# =================================================
+# AXE 2 — CROISEMENTS : CUMUL DES VULNÉRABILITÉS
+st.divider()
+st.header("AXE 2 — Croisements territoriaux et cumul des vulnérabilités")
+
+st.markdown("""
+Cette seconde partie vise à croiser l’accessibilité potentielle aux médecins généralistes
+avec d’autres dimensions territoriales, afin d’identifier les situations où plusieurs
+facteurs de fragilité se cumulent.
+
+L’objectif n’est pas d’établir des relations causales, mais de mettre en évidence des profils
+territoriaux à risque à l’aide de visualisations ciblées.
+""")
+
+# =================================================
+# 1. Définition d’un seuil d’APL faible (quintile inférieur)
+
+q20_apl = generaliste_2023["APL aux médecins généralistes"].quantile(0.20)
+
+generaliste_2023["APL_faible"] = (
+    generaliste_2023["APL aux médecins généralistes"] <= q20_apl
+)
+
+st.markdown(f"""
+**Définition retenue :**  
+Une commune est considérée comme étant en situation de *faible accessibilité* lorsqu’elle
+appartient aux **20 % les moins bien dotées** en termes d’APL
+(seuil ≈ **{q20_apl:.2f}**).
+""")
+
+# =================================================
+# 2. APL faible × Typologie des communes
+
+st.subheader("APL faible et typologie des communes")
+
+df_apl_typo = (
+    generaliste_2023
+    .merge(
+        typologie[["Code commune INSEE", "Typologie"]],
+        on="Code commune INSEE",
+        how="left"
+    )
+)
+
+df_apl_typo["Typologie simplifiée"] = df_apl_typo["Typologie"].replace({
+    "Rural autonome peu dense": "Rural",
+    "Rural autonome très peu dense": "Rural",
+    "Rural sous faible influence d'un pôle": "Périurbain",
+    "Rural sous forte influence d'un pôle": "Périurbain",
+    "Urbain dense": "Urbain",
+    "Urbain densité intermédiaire": "Urbain"
+})
+
+df_cross_typo = (
+    df_apl_typo
+    .dropna(subset=["Typologie simplifiée"])
+    .groupby(["Typologie simplifiée", "APL_faible"])
+    .size()
+    .reset_index(name="n")
+)
+
+df_cross_typo["part"] = (
+    df_cross_typo
+    .groupby("Typologie simplifiée")["n"]
+    .transform(lambda x: x / x.sum())
+)
+
+fig_typo = px.bar(
+    df_cross_typo[df_cross_typo["APL_faible"]],
+    x="Typologie simplifiée",
+    y="part",
+    color="Typologie simplifiée",
+    color_discrete_sequence=PALETTE,
+    labels={
+        "Typologie simplifiée": "Type de territoire",
+        "part": "Part de communes à faible APL"
+    },
+    title="Part de communes à faible accessibilité selon la typologie territoriale"
+)
+
+fig_typo.update_yaxes(tickformat=".0%")
+fig_typo.update_layout(title_x=0.5, title_xanchor="center")
+
+st.plotly_chart(fig_typo, use_container_width=True)
+
+st.markdown("""
+**Lecture :**  
+Les communes rurales concentrent une part disproportionnée des situations de faible
+accessibilité aux médecins généralistes. Les espaces urbains apparaissent globalement
+moins concernés par ces situations.
+""")
+
+# =================================================
+# 3. APL faible × dépendance aux médecins âgés
+# (CALCUL UNIQUEMENT)
+
+st.subheader("APL faible et dépendance aux médecins généralistes âgés")
+
+col_60 = [
+    col for col in generaliste_2023.columns
+    if "APL" in col and "60" in col
+]
+
+if len(col_60) == 0:
+    st.error("Colonne APL pour les médecins de 60 ans et moins introuvable.")
+    st.stop()
+
+col_apl_60 = col_60[0]
+
+generaliste_2023["dependance_seniors"] = (
+    generaliste_2023["APL aux médecins généralistes"] -
+    generaliste_2023[col_apl_60]
+)
+
+median_dep = generaliste_2023["dependance_seniors"].median()
+
+generaliste_2023["forte_dependance_seniors"] = (
+    generaliste_2023["dependance_seniors"] >= median_dep
+)
+
+generaliste_2023["vulnerabilite_cumulee"] = (
+    generaliste_2023["APL_faible"] &
+    generaliste_2023["forte_dependance_seniors"]
+)
+
+df_vuln = (
+    generaliste_2023
+    .groupby("vulnerabilite_cumulee")
+    .size()
+    .reset_index(name="n")
+)
+
+df_vuln["part"] = df_vuln["n"] / df_vuln["n"].sum()
+
+fig_vuln = px.bar(
+    df_vuln,
+    x="vulnerabilite_cumulee",
+    y="part",
+    color="vulnerabilite_cumulee",
+    color_discrete_sequence=[PALETTE[0], PALETTE[2]],
+    labels={
+        "vulnerabilite_cumulee": "Cumul de vulnérabilités",
+        "part": "Part de communes"
+    },
+    title="Communes cumulant faible APL et forte dépendance aux médecins âgés"
+)
+
+fig_vuln.update_yaxes(tickformat=".0%")
+fig_vuln.update_layout(
+    title_x=0.5,
+    xaxis=dict(
+        tickmode="array",
+        tickvals=[False, True],
+        ticktext=["Situation non cumulée", "Cumul de vulnérabilités"]
+    )
+)
+
+# =================================================
+# Affichage côte à côte : graphique + carte
+
+col1, col2 = st.columns([1, 1.3])
+
+# ---------- COLONNE 1 : GRAPHIQUE ----------
+with col1:
+    st.markdown("### Part des communes concernées")
+
+    st.plotly_chart(
+        fig_vuln,
+        use_container_width=True,
+        key="bar_vulnerabilite_cumulee"
+    )
+
+    st.markdown("""
+    **Lecture :**  
+    Une part non négligeable des communes cumule une faible accessibilité
+    aux médecins généralistes et une forte dépendance à des médecins âgés.
+    """)
+
+# ---------- COLONNE 2 : CARTE ----------
+with col2:
+    st.markdown("### Localisation des communes concernées")
+
+    gdf_vuln = communes.merge(
+        generaliste_2023,
+        left_on="INSEE_COM",
+        right_on="Code commune INSEE",
+        how="inner"
+    )
+
+    gdf_vuln = gdf_vuln[
+        (gdf_vuln["vulnerabilite_cumulee"] == True) &
+        (gdf_vuln.geometry.notnull())
+    ]
+
+    import matplotlib.pyplot as plt
+
+    fig_map, ax = plt.subplots(1, 1, figsize=(6, 6))
+
+    communes.plot(
+        ax=ax,
+        color="#EEEEEE",
+        linewidth=0.1,
+        edgecolor="white"
+    )
+
+    gdf_vuln.plot(
+        ax=ax,
+        color="#C0392B",
+        linewidth=0.2,
+        edgecolor="black"
+    )
+
+    ax.set_title(
+        "Communes cumulant faible APL\net dépendance aux médecins âgés",
+        fontsize=11
+    )
+
+    ax.axis("off")
+
+    st.pyplot(fig_map)
+
+# =================================================
+# Lecture globale
+st.markdown("""
+**Lecture conjointe :**  
+Le graphique met en évidence que seules certaines communes cumulent des vulnérabilités,
+tandis que la carte permet d’identifier précisément leur localisation.  
+Ces communes apparaissent principalement situées dans des territoires ruraux ou peu denses,
+soulignant une fragilité territoriale spécifique face à l’offre de soins de premier recours.
+""")
+
+
+
+
+
 # =================================================
 # Résumé et conclusion
 st.divider()
