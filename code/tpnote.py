@@ -3,6 +3,9 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # =================================================
 # Ici on configure Streamlit
@@ -75,7 +78,7 @@ unsafe_allow_html=True
 @st.cache_data
 def load_apl():
     df = pd.read_excel(
-        "data/aplg.xlsx",
+        BASE_DIR / "data" / "aplg.xlsx",
         sheet_name=2,
         skiprows=8
     )
@@ -87,32 +90,44 @@ def load_apl():
     )
     return df
 
+
 @st.cache_data
 def load_communes():
-    gdf = gpd.read_file("data/admincarto/livraison/COMMUNE.shp")
+    gdf = gpd.read_file(
+        BASE_DIR / "data" / "admincarto" / "livraison" / "COMMUNE.shp"
+    )
     gdf["INSEE_COM"] = gdf["INSEE_COM"].astype(str)
     gdf = gdf.to_crs(epsg=2154)
     gdf["geometry"] = gdf["geometry"].simplify(100, preserve_topology=True)
     return gdf.to_crs(epsg=4326)
 
+
 @st.cache_data
 def load_arrondissements():
-    gdf = gpd.read_file("data/admincarto/livraison/ARRONDISSEMENT_MUNICIPAL.shp")
+    gdf = gpd.read_file(
+        BASE_DIR / "data" / "admincarto" / "livraison" / "ARRONDISSEMENT_MUNICIPAL.shp"
+    )
     gdf["INSEE_ARM"] = gdf["INSEE_ARM"].astype(str)
     gdf = gdf.to_crs(epsg=2154)
     gdf["geometry"] = gdf["geometry"].simplify(10, preserve_topology=True)
     return gdf.to_crs(epsg=4326)
 
+
 @st.cache_data
 def load_departements():
-    gdf = gpd.read_file("data/admincarto/livraison/DEPARTEMENT.shp")
+    gdf = gpd.read_file(
+        BASE_DIR / "data" / "admincarto" / "livraison" / "DEPARTEMENT.shp"
+    )
     gdf = gdf[["INSEE_DEP", "NOM", "geometry"]]
     gdf["INSEE_DEP"] = gdf["INSEE_DEP"].astype(str)
     return gdf
 
+
 @st.cache_data
 def load_typologie():
-    gdf = gpd.read_file("data/typologie").drop(columns="geometry")
+    gdf = gpd.read_file(
+        BASE_DIR / "data" / "typologie"
+    ).drop(columns="geometry")
     gdf = gdf.rename(columns={
         "inseecom": "Code commune INSEE",
         "nom_typo": "Typologie"
@@ -120,10 +135,11 @@ def load_typologie():
     gdf["Code commune INSEE"] = gdf["Code commune INSEE"].astype(str)
     return gdf
 
+
 @st.cache_data
 def load_social():
     df = pd.read_csv(
-        "data/data.csv",
+        BASE_DIR / "data" / "data.csv",
         sep=";",
         skiprows=2,
         na_values=["NA", "N/A", "pas de solution", ""]
@@ -135,6 +151,7 @@ def load_social():
     df["niveau_vie"] = pd.to_numeric(df["niveau_vie"], errors="coerce")
     df["Code"] = df["Code"].astype(str).str.zfill(2)
     return df
+
 
 # =================================================
 # On charge les données
