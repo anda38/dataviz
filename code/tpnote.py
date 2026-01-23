@@ -1,7 +1,3 @@
-st.write("APP STARTED")
-
-# =================================================
-# =================================================
 import geopandas as gpd
 import pandas as pd
 import streamlit as st
