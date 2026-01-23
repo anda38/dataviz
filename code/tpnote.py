@@ -5,7 +5,6 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import mplcursors
-
 import matplotlib.pyplot as plt
 
 # =================================================
@@ -15,21 +14,20 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.title("Accessibilité potentielle localisée (APL)")
 st.caption("Médecins généralistes – France métropolitaine (2023)")
-
 
 # =================================================
 # Ici on définit une palette de couleurs et une fonction pour afficher des encadrés
 
 PALETTE = [
-    "#1F4E79",  # bleu foncé bien ancré
-    "#3E7CB1",  # bleu moyen
-    "#7FB3D5",  # bleu clair
-    "#B8E0D2",  # vert d’eau
-    "#FFF7DD"   # très clair
+    "#1F4E79",
+    "#3E7CB1",
+    "#7FB3D5",
+    "#B8E0D2",
+    "#FFF7DD"
 ]
-
 
 def box(text, bg="#C3EAE368", border="#C3EAE368"):
     st.markdown(
@@ -48,33 +46,32 @@ def box(text, bg="#C3EAE368", border="#C3EAE368"):
         unsafe_allow_html=True
     )
 
-
 # =================================================
 # Introduction / Problématique
 st.markdown(
 """
 <div style="text-align: justify;">
 
-Cette application s’inscrit dans le cadre d’un défi proposé par Open Data University. 
-L’objectif est d’explorer et d’analyser des données ouvertes à l’aide de visualisations graphiques 
-et cartographiques, afin d’apporter des éléments de lecture clairs et pertinents à une problématique 
-d’intérêt public.
+Cette application a été réalisée dans le cadre d’un défi proposé par Open Data University.
+Elle utilise des données ouvertes pour analyser l’accessibilité aux médecins généralistes
+en France métropolitaine en 2023 à l’aide de visualisations interactives.
 
-Cette application propose plus particulièrement une exploration visuelle de l’ accessibilité potentielle localisée (APL) aux médecins généralistes
-en France métropolitaine en 2023.
+L’objectif est d’observer comment cette accessibilité varie selon les territoires et selon
+l’échelle d’analyse, du niveau national jusqu’au niveau communal.
 
-L’objectif n’est pas d’établir des relations causales fortes, mais d’analyser comment 
-l’accessibilité aux soins de premier recours varie selon les territoires, à différentes échelles, 
-et en fonction de certains contextes géographiques et socio-économiques.
+Ce travail ne cherche pas à expliquer les causes des inégalités observées, mais à les rendre
+visibles et comparables à travers des graphiques et des cartes.
 
-<b>Problématique choisie :</b> 
-<b>Comment l’accessibilité potentielle aux médecins généralistes se répartit-elle sur le territoire 
-français, et quels contrastes spatiaux et territoriaux peuvent être mis en évidence à l’aide de 
-visualisations graphiques et cartographiques ?</b>
+<b>Problématique :</b>  
+<b>Comment l’accessibilité potentielle aux médecins généralistes se répartit-elle sur le
+territoire français, et quels contrastes spatiaux peut-on observer grâce aux
+visualisations ?</b>
+
 </div>
 """,
 unsafe_allow_html=True
 )
+
 
 # =================================================
 # Chargement des données
@@ -116,7 +113,6 @@ def load_departements():
     gdf["INSEE_DEP"] = gdf["INSEE_DEP"].astype(str)
     return gdf
 
-
 @st.cache_data
 def load_typologie():
     gdf = gpd.read_file("data/typologie").drop(columns="geometry")
@@ -155,169 +151,103 @@ social = load_social()
 # =================================================
 # GLOBAL DASHBOARD LAYOUT
 # =================================================
-col_viz, col_text = st.columns([3, 1.2], gap="large")
 
-# =================================================
-# AXE 1 — Identifier les territoires prioritaires
-# =================================================
-
-from streamlit_extras.stylable_container import stylable_container
-
-
-# =================================================
-# AXE 1 — Identifier les territoires prioritaires
-# =================================================
-
+st.divider()
 st.subheader("Identifier les territoires prioritaires")
 
-st.markdown("""
-Cette section vise à quantifier l’ampleur nationale de la population exposée à une faible accessibilité
-aux médecins généralistes, sans distinction de typologie territoriale.
-L’objectif est d’identifier les départements où les enjeux concernent le plus grand nombre d’habitants.
-""")
+col_viz, col_text = st.columns([3.2, 1.8], gap="large")
 
-# -------------------------------------------------
-# Seuil APL
-# -------------------------------------------------
-seuil_apl = st.slider(
-    "Seuil d’APL considéré comme faible",
-    min_value=1.0,
-    max_value=4.0,
-    value=3.0,
-    step=0.1
-)
-
-# -------------------------------------------------
-# Indicateurs nationaux
-# -------------------------------------------------
-pop_totale = generaliste_2023["Population totale 2021"].sum()
-mask_faible = generaliste_2023["APL aux médecins généralistes"] < seuil_apl
-
-pop_exposee = generaliste_2023.loc[mask_faible, "Population totale 2021"].sum()
-pct_pop_exposee = 100 * pop_exposee / pop_totale
-
-nb_communes_exposees = generaliste_2023.loc[
-    mask_faible, "Code commune INSEE"
-].nunique()
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("Population en zones à faible accessibilité", f"{pct_pop_exposee:.1f} %")
-
-with col2:
-    st.metric("Communes concernées", f"{nb_communes_exposees:,}".replace(",", " "))
-
-with col3:
-    st.metric("Population concernée", f"{pop_exposee:,.0f}".replace(",", " "))
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# -------------------------------------------------
-# % population exposée par département (CALCUL AVANT MAP)
-# -------------------------------------------------
-dep_expo = (
-    generaliste_2023
-    .assign(expose=lambda df: df["APL aux médecins généralistes"] < seuil_apl)
-    .groupby("Departement")
-    .apply(
-        lambda df: 100
-        * df.loc[df["expose"], "Population totale 2021"].sum()
-        / df["Population totale 2021"].sum()
-    )
-    .reset_index(name="part_pop_exposee")
-)
-
-dep_expo_map = dict(zip(dep_expo["Departement"], dep_expo["part_pop_exposee"]))
-dep_name_map = dict(zip(departements["INSEE_DEP"], departements["NOM"]))
-
-# -------------------------------------------------
-# Données géographiques
-# -------------------------------------------------
-communes_2154 = communes.to_crs(epsg=2154)
-departements_2154 = departements.to_crs(epsg=2154)
-
-gdf_apl = communes_2154.merge(
-    generaliste_2023[
-        ["Code commune INSEE", "Departement", "APL aux médecins généralistes"]
-    ],
-    left_on="INSEE_COM",
-    right_on="Code commune INSEE",
-    how="left"
-)
-
-gdf_faible_apl = gdf_apl[
-    gdf_apl["APL aux médecins généralistes"] < seuil_apl
-]
-
-top10_deps = (
-    gdf_faible_apl
-    .groupby("Departement")
-    .size()
-    .sort_values(ascending=False)
-    .head(10)
-    .index
-    .tolist()
-)
-
-gdf_dep_top10 = departements_2154[
-    departements_2154["INSEE_DEP"].isin(top10_deps)
-]
+# =========================
+# COLONNE VISUALISATION
+# =========================
 with col_viz:
 
-    fig, ax = plt.subplots(figsize=(7.5, 7.5), dpi=150)
+    seuil_apl = st.slider(
+        "Seuil d’APL considéré comme faible",
+        min_value=1.0,
+        max_value=4.0,
+        value=3.0,
+        step=0.1
+    )
 
-    # Fond France
+    pop_totale = generaliste_2023["Population totale 2021"].sum()
+    mask_faible = generaliste_2023["APL aux médecins généralistes"] < seuil_apl
+    pop_exposee = generaliste_2023.loc[mask_faible, "Population totale 2021"].sum()
+    pct_pop_exposee = 100 * pop_exposee / pop_totale
+    nb_communes_exposees = generaliste_2023.loc[
+        mask_faible, "Code commune INSEE"
+    ].nunique()
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(
+            "Population en zones à faible accessibilité",
+            f"{pct_pop_exposee:.1f} %"
+        )
+    with col2:
+        st.metric(
+            "Communes concernées",
+            f"{nb_communes_exposees:,}".replace(",", " ")
+        )
+    with col3:
+        st.metric(
+            "Population concernée",
+            f"{pop_exposee:,.0f}".replace(",", " ")
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # -------------------------------------------------
+    # Carte nationale
+    # -------------------------------------------------
+    communes_2154 = communes.to_crs(epsg=2154)
+    departements_2154 = departements.to_crs(epsg=2154)
+
+    gdf_apl = communes_2154.merge(
+        generaliste_2023[
+            ["Code commune INSEE", "Departement", "APL aux médecins généralistes"]
+        ],
+        left_on="INSEE_COM",
+        right_on="Code commune INSEE",
+        how="left"
+    )
+
+    gdf_faible_apl = gdf_apl[
+        gdf_apl["APL aux médecins généralistes"] < seuil_apl
+    ]
+
+    top10_deps = (
+        gdf_faible_apl
+        .groupby("Departement")
+        .size()
+        .sort_values(ascending=False)
+        .head(10)
+        .index
+        .tolist()
+    )
+
+    gdf_dep_top10 = departements_2154[
+        departements_2154["INSEE_DEP"].isin(top10_deps)
+    ]
+    st.markdown("### Communes à faible accessibilité")
+
+    fig, ax = plt.subplots(figsize=(5, 4.2), dpi=150)
     communes_2154.plot(ax=ax, color="#EEF4FA", linewidth=0)
-
-    # Contours tous départements
-    departements_2154.boundary.plot(
-        ax=ax,
-        color="#D6D6D6",
-        linewidth=0.3
-    )
-
-    # Communes à faible APL
-    gdf_faible_apl.plot(
-        ax=ax,
-        color="#B8E0D2",
-        linewidth=0
-    )
-
-    # Contours top 10 départements
-    gdf_dep_top10.boundary.plot(
-        ax=ax,
-        color="#1F4E79",
-        linewidth=0.9
-    )
-
+    departements_2154.boundary.plot(ax=ax, color="#D6D6D6", linewidth=0.3)
+    gdf_faible_apl.plot(ax=ax, color="#B8E0D2", linewidth=0)
+    gdf_dep_top10.boundary.plot(ax=ax, color="#1F4E79", linewidth=0.9)
     ax.set_aspect("equal")
     ax.axis("off")
+    st.pyplot(fig, use_container_width=False)
 
-    ax.set_title(
-        "Communes à faible accessibilité aux médecins généralistes\n"
-        "Contours : 10 départements les plus concernés",
-        fontsize=12,
-        fontweight="bold",
-        color="#1F4E79",
-        pad=12
-    )
-
-    st.pyplot(fig)
-
+# =========================
+# COLONNE TEXTE / TABLE
+# =========================
 with col_text:
+    # push Lecture + table down only
+    st.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 
-    st.markdown("### Identifier les territoires prioritaires")
-
-    st.markdown("""
-    Cette carte met en évidence la répartition spatiale des communes présentant
-    une **accessibilité faible aux médecins généralistes** à l’échelle nationale.
-    
-    Les contours soulignent les **départements où ces communes sont les plus nombreuses**,
-    permettant d’identifier des territoires prioritaires du point de vue de l’accès aux soins.
-    """)
-
-    st.markdown("#### Top 10 départements les plus concernés")
+    st.markdown("### Lecture")
 
     top10_table = (
         gdf_faible_apl
@@ -330,40 +260,40 @@ with col_text:
             right_on="INSEE_DEP",
             how="left"
         )
+        .assign(
+            Département=lambda df:
+            df["Departement"] + " – " + df["NOM"]
+        )
         .sort_values("Nombre de communes", ascending=False)
         .head(10)
-        [["NOM", "Nombre de communes"]]
-    )
-
-    st.dataframe(
-        top10_table,
-        hide_index=True,
-        use_container_width=True
-    )
-
-
-
-# =================================================
-# Visualisation 1 : Carte de l’APL aux médecins généralistes
-
-# =================================================
-# APL locale — carte interactive
-# =================================================
-
-with col_text:
-
-    st.subheader(
-        "Accessibilité potentielle localisée aux médecins généralistes "
-        "en France métropolitaine (2023)"
+        [["Département", "Nombre de communes"]]
     )
 
     st.markdown("""
-    Cette carte représente l’accessibilité potentielle localisée aux médecins généralistes
-    à l’échelle communale, ou infra-communale pour Paris.
-    
-    L’objectif est avant tout **descriptif**, afin de poser un cadre spatial avant
-    l’examen de regroupements ou de distributions plus globales.
+    La carte met en évidence les communes dont le niveau d’APL est inférieur au seuil choisi.
+    Les départements entourés correspondent à ceux qui regroupent le plus grand nombre de
+    communes en situation de faible accessibilité.
     """)
+
+    st.dataframe(top10_table, hide_index=True, use_container_width=True)
+
+
+
+st.divider()
+
+st.subheader(
+    "Accessibilité potentielle localisée aux médecins généralistes "
+    "en France métropolitaine (2023)"
+)
+
+col_viz2, col_text2 = st.columns([3.2, 1.8], gap="large")
+
+# =========================
+# COLONNE TEXTE / CONTROLS
+# =========================
+with col_text2:
+
+    st.markdown("### Sélection du département")
 
     deps = sorted(
         d for d in generaliste_2023["Departement"].unique()
@@ -376,13 +306,24 @@ with col_text:
         index=deps.index("75")
     )
 
-    hide_na = st.checkbox(
-        "Masquer les zones sans données",
-        value=True
-    )
+    hide_na = st.checkbox("Masquer les zones sans données", value=True)
 
+    # espace visuel
+    st.markdown("<br><br>", unsafe_allow_html=True)
 
-with col_viz:
+    st.markdown("""
+    ### Lecture
+    Cette carte permet d’examiner l’accessibilité aux médecins généralistes à l’échelle
+    locale. En sélectionnant un département, on peut observer les différences entre
+    les communes et repérer d’éventuels contrastes internes.
+    """)
+
+# =========================
+# COLONNE VISUALISATION
+# =========================
+with col_viz2:
+
+    st.markdown("### APL moyenne par territoire")
 
     def plot_map(gdf, title, zoom, hover_col):
         fig = px.choropleth_map(
@@ -399,18 +340,14 @@ with col_viz:
                 "lon": gdf.geometry.centroid.x.mean()
             }
         )
-
         fig.update_traces(
             hovertemplate="<b>%{hovertext}</b><br>APL moyenne : %{z:.2f}<extra></extra>"
         )
-
         fig.update_layout(
-            title=dict(text=title, x=0.5),
-            margin={"r": 0, "t": 40, "l": 0, "b": 0}
+            title=None,
+            margin={"r": 0, "t": 10, "l": 0, "b": 0}
         )
-
         return fig
-
 
     if DEP_CODE == "75":
         apl_paris = generaliste_2023[
@@ -419,19 +356,17 @@ with col_viz:
         arr_paris = arrondissements[
             arrondissements["INSEE_ARM"].str.startswith("751")
         ]
-
         gdf = arr_paris.merge(
             apl_paris,
             left_on="INSEE_ARM",
             right_on="Code commune INSEE",
             how="left"
         )
-
         if hide_na:
             gdf = gdf.dropna(subset=["APL aux médecins généralistes"])
 
         st.plotly_chart(
-            plot_map(gdf, "APL moyenne par arrondissement", 11, "NOM"),
+            plot_map(gdf, None, 11, "NOM"),
             use_container_width=True
         )
 
@@ -439,207 +374,205 @@ with col_viz:
         apl_dep = generaliste_2023[
             generaliste_2023["Departement"] == DEP_CODE
         ]
-
         gdf = communes.merge(
             apl_dep,
             left_on="INSEE_COM",
             right_on="Code commune INSEE",
             how="left"
         )
-
         if hide_na:
             gdf = gdf.dropna(subset=["APL aux médecins généralistes"])
 
         st.plotly_chart(
-            plot_map(gdf, "APL moyenne par commune", 7, "NOM"),
+            plot_map(gdf, None, 7, "NOM"),
             use_container_width=True
         )
-with col_text:
-
-    box("""
-    <h4>Département de l’Isère (38)</h4>
-    <p>
-    L’APL aux médecins généralistes présente de fortes disparités communales.
-    Les communes proches de l’aire grenobloise affichent en moyenne des niveaux
-    plus élevés, tandis que plusieurs communes rurales ou de montagne présentent
-    des niveaux nettement plus faibles, parfois inférieurs à 2.
-    </p>
-    """)
-
-
-# =================================================
-# Visualisation 2 : APL selon la typologie des communes
 
 st.divider()
-st.subheader("Accessibilité selon la typologie des communes")
+st.subheader("Distribution de l’APL au sein du département sélectionné")
 
-apl_typo = generaliste_2023.merge(
-    typologie[["Code commune INSEE", "Typologie"]],
-    on="Code commune INSEE"
-)
+col_viz, col_text = st.columns([3, 2], gap="large")
 
-apl_typo["Typologie simplifiée"] = apl_typo["Typologie"].replace({
-    "Rural autonome peu dense": "Rural",
-    "Rural autonome très peu dense": "Rural",
-    "Rural sous faible influence d'un pôle": "Périurbain",
-    "Rural sous forte influence d'un pôle": "Périurbain",
-    "Urbain dense": "Urbain",
-    "Urbain densité intermédiaire": "Urbain"
-})
+df_dep = generaliste_2023[
+    generaliste_2023["Departement"] == DEP_CODE
+].dropna(subset=["APL aux médecins généralistes"])
 
-fig_box = px.box(
-    apl_typo.dropna(subset=["APL aux médecins généralistes"]),
-    x="Typologie simplifiée",
-    y="APL aux médecins généralistes",
-    color="Typologie simplifiée",
-    color_discrete_sequence=PALETTE,
-    labels={
-        "APL aux médecins généralistes": "APL",
-        "Typologie simplifiée": "Type de territoire"
-    },
-    title="Distribution de l’APL selon la typologie des communes"
-)
-fig_box.update_layout(title_x=0.5, title_xanchor="center")
-st.plotly_chart(fig_box, use_container_width=True)
+with col_viz:
 
-st.markdown("""
-Ce graphique met en évidence un gradient territorial d’accès aux soins, avec une accessibilité en moyenne plus élevée 
-dans les espaces urbains. Toutefois, la dispersion importante des valeurs, en particulier en milieu urbain, montre 
-que le type de territoire ne suffit pas à expliquer à lui seul les écarts observés.
+    fig_hist_dep = px.histogram(
+        df_dep,
+        x="APL aux médecins généralistes",
+        nbins=30,
+        color_discrete_sequence=[PALETTE[0]],
+        labels={"APL aux médecins généralistes": "APL"},
+        title=f"Répartition des niveaux d’APL – Département {DEP_CODE}"
+    )
+
+    fig_hist_dep.update_layout(title_x=0.5)
+    st.plotly_chart(fig_hist_dep, use_container_width=True)
+
+with col_text:
+
+    st.markdown(f"""
+### Lecture
+
+Ce graphique montre la répartition des niveaux d’APL entre les communes du département
+**{DEP_CODE}**.
+
+Lorsque les valeurs sont proches les unes des autres, la situation est relativement
+homogène. À l’inverse, une distribution étalée indique des écarts importants entre
+les communes.
+
+Cette visualisation permet de mieux comprendre si les difficultés observées dans le
+département concernent l’ensemble du territoire ou seulement certaines communes.
 """)
 
-# =================================================
-# Visualisation 3 : APL moyenne par département
 
-st.subheader("Distribution de l’APL moyenne par département")
-
-apl_dep_mean = (
+#####
+df_dep_stats = (
     generaliste_2023
-    .groupby("Departement")["APL aux médecins généralistes"]
-    .mean()
+    .groupby("Departement")
+    .agg(
+        apl_mean=("APL aux médecins généralistes", "mean"),
+        apl_q25=("APL aux médecins généralistes", lambda x: x.quantile(0.25)),
+        apl_q75=("APL aux médecins généralistes", lambda x: x.quantile(0.75)),
+        n_communes=("Code commune INSEE", "nunique")
+    )
     .reset_index()
 )
 
-fig_hist = px.histogram(
-    apl_dep_mean,
-    x="APL aux médecins généralistes",
-    nbins=30,
-    color_discrete_sequence=[PALETTE[0]],
-    labels={"APL aux médecins généralistes": "APL moyenne"},
-    title="Répartition des niveaux d’APL moyenne entre les départements"
-)
-fig_hist.update_yaxes(title_text="Nombre de départements")
-fig_hist.update_layout(title_x=0.5)
-fig_hist.update_traces(
-    hovertemplate=
-    "APL moyenne : %{x}<br>" +
-    "Nombre de départements : %{y}<extra></extra>"
-)
+df_dep_stats["IQR"] = df_dep_stats["apl_q75"] - df_dep_stats["apl_q25"]
 
-fig_hist.update_layout(
-    title_x=0.5,
-    title_xanchor="center"
+ordre_quartiles = [
+    "APL très faible",
+    "APL faible",
+    "APL intermédiaire",
+    "APL élevée"
+]
+
+df_dep_stats["quartile_apl"] = pd.qcut(
+    df_dep_stats["apl_mean"],
+    q=4,
+    labels=ordre_quartiles
 )
 
-st.plotly_chart(fig_hist, use_container_width=True)
-
-
-st.markdown("""
-Cette distribution montre que la majorité des départements se concentrent autour de niveaux d’APL intermédiaires. 
-Les départements très bien ou très mal dotés restent minoritaires, ce qui nuance l’idée d’une opposition simple 
-entre territoires favorisés et défavorisés.
-            
-Par exemple, l’histogramme indique qu’environ 15 départements présentent une APL moyenne comprise entre 2,8 et 3,0, correspondant à l’intervalle le plus fréquent de la distribution.
-""")
-
-# =================================================
-# Visualisation 4 : APL et niveau de vie
-st.subheader("APL et niveau de vie")
-
-df_scatter = apl_dep_mean.merge(
-    social,
-    left_on="Departement",
-    right_on="Code"
+df_dep_stats["quartile_apl"] = pd.Categorical(
+    df_dep_stats["quartile_apl"],
+    categories=ordre_quartiles,
+    ordered=True
 )
+df_focus = df_dep_stats[df_dep_stats["Departement"] == DEP_CODE]
 
-fig_scatter = px.scatter(
-    df_scatter,
-    x="niveau_vie",
-    y="APL aux médecins généralistes",
-    labels={
-        "niveau_vie": "Médiane du niveau de vie (€)",
-        "APL aux médecins généralistes": "APL moyenne"
-    },
-    title="Lien entre niveau de vie et accessibilité aux médecins généralistes",
-    color_discrete_sequence=[PALETTE[1]]
-)
-fig_scatter.update_traces(marker=dict(size=9))
-fig_scatter.update_layout(title_x=0.5, title_xanchor="center")
 
-st.plotly_chart(fig_scatter, use_container_width=True)
+couleurs_quartiles = {
+    "APL très faible": PALETTE[0],   # bleu foncé
+    "APL faible": PALETTE[1],        # bleu moyen
+    "APL intermédiaire": PALETTE[3], # vert d’eau
+    "APL élevée": PALETTE[4]         # très clair
+}
 
-st.markdown("""
-Ce graphique suggère qu’il n’existe pas de relation forte et systématique entre le niveau de vie médian 
-et l’accessibilité moyenne aux médecins généralistes à l’échelle départementale. Certains départements 
-relativement favorisés présentent une accessibilité modérée, tandis que d’autres, moins favorisés, ne sont 
-pas nécessairement les moins bien dotés.
-
-Cette absence de lien marqué souligne l’intérêt des visualisations pour explorer les données sans chercher 
-à imposer des relations explicatives qui ne sont pas clairement soutenues par les résultats.
-""")
-
-# =================================================
-# Résumé et conclusion
 st.divider()
+st.subheader(
+    "Typologie des situations départementales d’accessibilité aux médecins généralistes"
+)
 
+col_viz, col_text = st.columns([3, 2], gap="large")
+
+with col_viz:
+
+    fig_scatter = px.scatter(
+        df_dep_stats,
+        x="apl_mean",
+        y="IQR",
+        size="n_communes",
+        color="quartile_apl",
+        color_discrete_map=couleurs_quartiles,
+        category_orders={"quartile_apl": ordre_quartiles},
+        hover_name="Departement",
+        labels={
+            "apl_mean": "APL moyenne départementale",
+            "IQR": "Hétérogénéité communale (IQR)",
+            "quartile_apl": "Position nationale"
+        },
+        title=None,
+        size_max=26
+    )
+    if not df_focus.empty:
+        fig_scatter.add_trace(
+        px.scatter(
+            df_focus,
+            x="apl_mean",
+            y="IQR",
+            size="n_communes",   # ← IMPORTANT
+            hover_name="Departement"
+        ).data[0]
+    )
+
+    fig_scatter.data[-1].update(
+        marker=dict(
+            symbol="diamond",
+            color="#2B41C0",
+            size=22,
+            line=dict(width=3, color="black")
+        ),
+        name=f"Département sélectionné ({DEP_CODE})",
+        showlegend=True
+    )
+
+    fig_scatter.update_traces(
+    hovertemplate=
+    "<b>Département %{hovertext}</b><br>"
+    "APL moyenne : %{x:.2f}<br>"
+    "Dispersion (IQR) : %{y:.2f}<br>"
+    "Nombre de communes : %{customdata}<br>"
+    "<extra></extra>",
+    customdata=df_dep_stats["n_communes"]
+)
+
+
+    fig_scatter.update_layout(
+        legend_title_text="",
+        margin=dict(l=0, r=0, t=10, b=0)
+    )
+
+    st.plotly_chart(fig_scatter, use_container_width=True)
+
+with col_text:
+
+    st.markdown("""
+### Lecture
+
+Ce graphique compare les départements selon leur niveau moyen d’accessibilité aux
+médecins généralistes et les différences observées entre leurs communes.
+
+Les départements situés à gauche présentent en moyenne une accessibilité plus faible.
+Lorsque cette faible accessibilité s’accompagne d’une dispersion limitée, cela indique
+une situation similaire sur l’ensemble du département. À l’inverse, une forte dispersion
+traduit des contrastes internes plus marqués.
+
+Ce graphique permet ainsi d’identifier différents profils départementaux, en allant
+au-delà d’une simple lecture cartographique.
+""")
+
+
+
+# =================================================
+# Conclusion (inchangée)
+# =================================================
+st.divider()
 st.subheader("Conclusion")
 
 st.markdown("""
+Cette exploration met en évidence des différences importantes d’accès aux médecins
+généralistes selon les territoires et selon l’échelle d’analyse.
 
-Cette exploration met en évidence de fortes disparités spatiales d’accès aux médecins généralistes en France, 
-observables à différentes échelles. Si certains contrastes territoriaux apparaissent clairement, les liens 
-avec les variables socio-économiques étudiées restent limités.
+Les visualisations montrent que certaines difficultés sont généralisées à l’échelle
+départementale, tandis que d’autres sont plus localisées et concernent uniquement
+certaines communes.
 
-Dans ce contexte, l’intérêt principal du travail réside dans l’usage de visualisations interactives via Streamlit, 
-permettant d’explorer les données de manière progressive et transparente. L’objectif n’est pas de démontrer, 
-mais de rendre visibles des dynamiques territoriales complexes.
+L’intérêt principal de ce travail réside dans l’usage de visualisations interactives,
+qui permettent d’explorer progressivement les données et de mieux comprendre
+la diversité des situations territoriales, sans chercher à établir de relations
+causales.
 """)
 
-
-communes.plot(
-    ax=ax,
-    color="#EEF4FA",       # bleu très clair
-    linewidth=0
-)
-
-# Contours de TOUS les départements (gris très clair)
-dep_boundaries = departements.boundary.plot(
-    ax=ax,
-    color="#9C9898",
-    linewidth=0.3
-)
-
-# Communes à faible APL (vert d’eau)
-gdf_faible_apl.plot(
-    ax=ax,
-    color="#B8E0D2",       # vert d’eau
-    linewidth=0,
-    alpha=1
-)
-
-# Contours des départements prioritaires (bleu foncé)
-
-dep_top10_boundaries = gdf_dep_top10.boundary.plot(
-    ax=ax,
-    color="#449589",
-    linewidth=0.8
-)
-
-
-ax.set_title(
-    "Communes à faible accessibilité aux médecins généralistes\n"
-    "Contours : 10 départements les plus concernés",
-    fontsize=12,
-    fontweight="bold",
-    color="#1F4E79"
-)
