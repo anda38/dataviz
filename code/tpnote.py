@@ -3,6 +3,39 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import matplotlib.pyplot as plt
+import os
+import zipfile
+import requests
+import streamlit as st
+
+@st.cache_data
+def download_and_extract_datatp():
+    FILE_ID = "1O_2Zi4yLe0iNe_D7c1pBKAHewIR7oH59"
+    URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
+
+    zip_path = "datatp.zip"
+    extract_path = "datatp"
+
+    # If already downloaded & extracted → do nothing
+    if os.path.exists(extract_path):
+        return
+
+    # Download zip
+    response = requests.get(URL, stream=True)
+    response.raise_for_status()
+
+    with open(zip_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+
+    # Extract
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_path)
+
+    # Optional cleanup
+    os.remove(zip_path)
+download_and_extract_datatp()
 
 # =================================================
 # Ici on configure Streamlit
