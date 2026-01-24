@@ -14,19 +14,18 @@ def download_and_extract_datatp():
     zip_path = "datatp.zip"
     extract_path = "datatp"
 
-    if os.path.exists(extract_path):
+    if os.path.exists(os.path.join(extract_path, "aplg.xlsx")):
         return
 
     url = f"https://drive.google.com/uc?id={FILE_ID}"
 
-    # Download
-    gdown.download(url, zip_path, quiet=False)
+    gdown.download(url, zip_path, quiet=False, fuzzy=True)
 
-    # Extract
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_path)
+        zip_ref.extractall(".")
 
     os.remove(zip_path)
+
 
 download_and_extract_datatp()
 
