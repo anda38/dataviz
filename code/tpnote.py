@@ -114,7 +114,7 @@ def load_apl():
 
 @st.cache_data
 def load_communes():
-    gdf = gpd.read_file("datatp/admincarto/livraison/COMMUNE.shp")
+    gdf = gpd.read_file("datatp/admincarto/COMMUNE.shp")
     gdf["INSEE_COM"] = gdf["INSEE_COM"].astype(str)
     gdf = gdf.to_crs(epsg=2154)
     gdf["geometry"] = gdf["geometry"].simplify(100, preserve_topology=True)
@@ -122,7 +122,7 @@ def load_communes():
 
 @st.cache_data
 def load_arrondissements():
-    gdf = gpd.read_file("datatp/admincarto/livraison/ARRONDISSEMENT_MUNICIPAL.shp")
+    gdf = gpd.read_file("datatp/admincarto/ARRONDISSEMENT_MUNICIPAL.shp")
     gdf["INSEE_ARM"] = gdf["INSEE_ARM"].astype(str)
     gdf = gdf.to_crs(epsg=2154)
     gdf["geometry"] = gdf["geometry"].simplify(10, preserve_topology=True)
@@ -130,7 +130,7 @@ def load_arrondissements():
 
 @st.cache_data
 def load_departements():
-    gdf = gpd.read_file("datatp/admincarto/livraison/DEPARTEMENT.shp")
+    gdf = gpd.read_file("datatp/admincarto/DEPARTEMENT.shp")
     gdf = gdf[["INSEE_DEP", "NOM", "geometry"]]
     gdf["INSEE_DEP"] = gdf["INSEE_DEP"].astype(str)
     return gdf
