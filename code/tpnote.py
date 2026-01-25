@@ -29,8 +29,7 @@ def download_and_extract_datatp():
 
 download_and_extract_datatp()
 
-# =================================================
-# Ici on configure Streamlit
+
 st.set_page_config(
     page_title="APL – Médecins généralistes (2023)",
     layout="wide"
@@ -40,8 +39,7 @@ st.set_page_config(
 st.title("Accessibilité potentielle localisée (APL)")
 st.caption("Médecins généralistes – France métropolitaine (2023)")
 
-# =================================================
-# Ici on définit une palette de couleurs et une fonction pour afficher des encadrés
+
 
 PALETTE = [
     "#1F4E79",
@@ -68,21 +66,24 @@ def box(text, bg="#C3EAE368", border="#C3EAE368"):
         unsafe_allow_html=True
     )
 
-# =================================================
-# Introduction / Problématique
+
 st.markdown(
 """
 <div style="text-align: justify;">
 
-Cette application a été réalisée dans le cadre d’un défi proposé par Open Data University.
-Elle utilise des données ouvertes pour analyser l’accessibilité aux médecins généralistes
-en France métropolitaine en 2023 à l’aide de visualisations interactives.
+L’accessibilité potentielle localisée (APL) est un indicateur qui mesure l’accès aux médecins généralistes à une échelle géographique fine, celle de la commune. Contrairement aux indicateurs classiques de densité médicale, il prend en compte à la fois l’offre de soins, la population locale, les communes environnantes, ainsi que le niveau d’activité des médecins et la structure par âge de la population.
 
-L’objectif est d’observer comment cette accessibilité varie selon les territoires et selon
-l’échelle d’analyse, du niveau national jusqu’au niveau communal.
+Exprimée en nombre de consultations accessibles par an et par habitant, l’APL permet de mettre en évidence des inégalités territoriales d’accès aux soins qui peuvent être masquées lorsque l’analyse est réalisée à des échelles plus larges.
 
-Ce travail ne cherche pas à expliquer les causes des inégalités observées, mais à les rendre
-visibles et comparables à travers des graphiques et des cartes.
+Cette application a été réalisée dans le cadre d’un défi proposé par Open Data University. Elle mobilise des données ouvertes pour analyser l’accessibilité aux médecins généralistes en France métropolitaine en 2023 à l’aide de visualisations interactives.
+
+L’objectif est d’observer comment cette accessibilité varie selon les territoires et selon l’échelle d’analyse, du niveau national jusqu’au niveau communal. Les graphiques et cartes sont organisés de manière progressive afin de proposer une lecture guidée des résultats : un département est sélectionné par défaut afin d’illustrer concrètement la manière d’interpréter les différentes visualisations et de suivre un fil conducteur commun entre la carte, l’histogramme et le graphique de synthèse.
+
+Il est toutefois possible de modifier à tout moment le département sélectionné, ainsi que le seuil d’APL considéré comme faible, afin d’explorer d’autres situations territoriales et de comparer les résultats.
+
+Dans cette application, un seuil de 1,90 consultation par an et par habitant est retenu comme valeur de référence pour identifier les territoires à faible accessibilité. Ce seuil permet de repérer les zones les plus en difficulté tout en conservant une lecture cohérente à l’échelle nationale.
+
+Ce travail ne cherche pas à expliquer les causes des inégalités observées, mais à les rendre visibles, lisibles et comparables à travers des visualisations interactives.
 
 <b>Problématique :</b>  
 <b>Comment l’accessibilité potentielle aux médecins généralistes se répartit-elle sur le
@@ -95,8 +96,7 @@ unsafe_allow_html=True
 )
 
 
-# =================================================
-# Chargement des données
+
 @st.cache_data
 def load_apl():
     df = pd.read_excel(
@@ -136,32 +136,27 @@ def load_departements():
     return gdf
 
 
-# =================================================
-# On charge les données
+
 generaliste_2023 = load_apl()
 communes = load_communes()
 arrondissements = load_arrondissements()
 departements = load_departements()
 
-# =================================================
-# GLOBAL DASHBOARD LAYOUT
-# =================================================
+
 
 st.divider()
 st.subheader("Identifier les territoires prioritaires")
 
 col_viz, col_text = st.columns([3.2, 1.8], gap="large")
 
-# =========================
-# COLONNE VISUALISATION
-# =========================
+
 with col_viz:
 
     seuil_apl = st.slider(
         "Seuil d’APL considéré comme faible",
         min_value=1.0,
         max_value=4.0,
-        value=3.0,
+        value=1.90,
         step=0.1
     )
 
@@ -192,9 +187,7 @@ with col_viz:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # -------------------------------------------------
-    # Carte nationale
-    # -------------------------------------------------
+    
     communes_2154 = communes.to_crs(epsg=2154)
     departements_2154 = departements.to_crs(epsg=2154)
 
@@ -235,11 +228,9 @@ with col_viz:
     ax.axis("off")
     st.pyplot(fig, use_container_width=False)
 
-# =========================
-# COLONNE TEXTE / TABLE
-# =========================
+
 with col_text:
-    # push Lecture + table down only
+    
     st.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 
     st.markdown("### Lecture")
@@ -265,9 +256,11 @@ with col_text:
     )
 
     st.markdown("""
-    La carte met en évidence les communes dont le niveau d’APL est inférieur au seuil choisi.
-    Les départements entourés correspondent à ceux qui regroupent le plus grand nombre de
-    communes en situation de faible accessibilité.
+    Cette carte à l’échelle nationale permet d’identifier les communes dont l’APL est inférieure au seuil retenu, ici fixé à 1,90 consultation par an et par habitant, considéré comme un niveau faible d’accessibilité.
+
+Les communes colorées correspondent à celles situées sous ce seuil, tandis que les départements entourés font partie des dix départements qui concentrent le plus grand nombre de communes concernées. Cette représentation permet donc de repérer les territoires où les difficultés d’accès aux médecins généralistes sont les plus fréquentes.
+
+Le Loiret (45) apparaît clairement parmi ces départements. Cela indique que les situations de faible accessibilité y sont nombreuses et ne relèvent pas de cas isolés. On va donc poursuivre l’analyse en se focalisant sur ce département afin d’explorer plus en détail les variations locales d’APL.
     """)
 
     st.dataframe(top10_table, hide_index=True, use_container_width=True)
@@ -283,9 +276,7 @@ st.subheader(
 
 col_viz2, col_text2 = st.columns([3.2, 1.8], gap="large")
 
-# =========================
-# COLONNE TEXTE / CONTROLS
-# =========================
+
 with col_text2:
 
     st.markdown("### Sélection du département")
@@ -298,51 +289,84 @@ with col_text2:
     DEP_CODE = st.selectbox(
         "Choisissez un département",
         deps,
-        index=deps.index("75")
+        index=deps.index("45")
     )
+    dep_name = (
+    departements
+    .loc[departements["INSEE_DEP"] == DEP_CODE, "NOM"]
+    .values[0]
+)
+
 
     hide_na = st.checkbox("Masquer les zones sans données", value=True)
 
-    # espace visuel
     st.markdown("<br><br>", unsafe_allow_html=True)
 
     st.markdown("""
     ### Lecture
-    Cette carte permet d’examiner l’accessibilité aux médecins généralistes à l’échelle
-    locale. En sélectionnant un département, on peut observer les différences entre
-    les communes et repérer d’éventuels contrastes internes.
+    Cette carte permet d’analyser la répartition spatiale de l’APL à l’intérieur d'un département en comparant chaque commune au seuil retenu.
+
+Dans le Loiret, une large partie des communes présente une APL inférieure ou proche du seuil. Les communes mieux dotées existent, mais elles restent minoritaires et ne forment pas de pôles très marqués. Les écarts observés sont donc réels, mais relativement limités dans l’espace.
+
+Cette configuration suggère que la faible accessibilité n’est pas concentrée sur un secteur précis du département. Elle concerne une grande partie du territoire, ce qui renforce l’idée d’un problème structurel plutôt que localisé.
+
+La carte met en évidence la localisation des communes en difficulté, mais elle ne permet pas à elle seule d’évaluer l’intensité des écarts entre communes.
     """)
 
-# =========================
-# COLONNE VISUALISATION
-# =========================
+
+def plot_map_relative_to_seuil(gdf, seuil, zoom, hover_col):
+    gdf = gdf.copy()
+    gdf["apl_rel"] = gdf["APL aux médecins généralistes"] - seuil
+
+    vmax = max(abs(gdf["apl_rel"].min()), abs(gdf["apl_rel"].max()))
+
+    fig = px.choropleth_map(
+        gdf,
+        geojson=gdf.geometry,
+        locations=gdf.index,
+        color="apl_rel",
+        color_continuous_scale=[
+            "#1F4E79",  # très en dessous du seuil
+            "#7FB3D5",
+            "#EAF4EF",
+            "#FFF7DD",  # autour du seuil
+            "#FFFFFF"
+        ],
+        range_color=(-vmax, vmax),
+        map_style="carto-positron",
+        hover_name=hover_col,
+        zoom=zoom,
+        center={
+            "lat": gdf.geometry.centroid.y.mean(),
+            "lon": gdf.geometry.centroid.x.mean()
+        }
+    )
+
+    fig.update_traces(
+    hovertemplate=
+    "<b>%{hovertext}</b><br>"
+    "APL : %{customdata[0]:.1f}<br>"
+    "Écart au seuil : %{z:+.1f}<extra></extra>",
+    customdata=gdf[["APL aux médecins généralistes"]]
+)
+
+
+    fig.update_layout(
+        coloraxis_colorbar=dict(
+            title="Écart au seuil d’APL",
+            ticksuffix=""
+        ),
+        margin={"r": 0, "t": 10, "l": 0, "b": 0}
+    )
+
+    return fig
+
+
 with col_viz2:
 
-    st.markdown("### APL moyenne par territoire")
+    st.markdown(f"### APL moyenne par territoire / Département {DEP_CODE} ({dep_name})")
 
-    def plot_map(gdf, title, zoom, hover_col):
-        fig = px.choropleth_map(
-            gdf,
-            geojson=gdf.geometry,
-            locations=gdf.index,
-            color="APL aux médecins généralistes",
-            color_continuous_scale=PALETTE,
-            map_style="carto-positron",
-            hover_name=hover_col,
-            zoom=zoom,
-            center={
-                "lat": gdf.geometry.centroid.y.mean(),
-                "lon": gdf.geometry.centroid.x.mean()
-            }
-        )
-        fig.update_traces(
-            hovertemplate="<b>%{hovertext}</b><br>APL moyenne : %{z:.2f}<extra></extra>"
-        )
-        fig.update_layout(
-            title=None,
-            margin={"r": 0, "t": 10, "l": 0, "b": 0}
-        )
-        return fig
+
 
     if DEP_CODE == "75":
         apl_paris = generaliste_2023[
@@ -361,9 +385,15 @@ with col_viz2:
             gdf = gdf.dropna(subset=["APL aux médecins généralistes"])
 
         st.plotly_chart(
-            plot_map(gdf, None, 11, "NOM"),
-            use_container_width=True
-        )
+    plot_map_relative_to_seuil(
+        gdf,
+        seuil_apl,
+        zoom=11,
+        hover_col="NOM"
+    ),
+    use_container_width=True
+)
+
 
     else:
         apl_dep = generaliste_2023[
@@ -379,9 +409,15 @@ with col_viz2:
             gdf = gdf.dropna(subset=["APL aux médecins généralistes"])
 
         st.plotly_chart(
-            plot_map(gdf, None, 7, "NOM"),
-            use_container_width=True
-        )
+    plot_map_relative_to_seuil(
+        gdf,
+        seuil_apl,
+        zoom=7,
+        hover_col="NOM"
+    ),
+    use_container_width=True
+)
+
 
 st.divider()
 st.subheader("Distribution de l’APL au sein du département sélectionné")
@@ -392,38 +428,48 @@ df_dep = generaliste_2023[
     generaliste_2023["Departement"] == DEP_CODE
 ].dropna(subset=["APL aux médecins généralistes"])
 
-with col_viz:
+fig_hist_dep = px.histogram(
+    df_dep,
+    x="APL aux médecins généralistes",
+    nbins=30,
+    color_discrete_sequence=[PALETTE[0]],
+    title=f"Répartition des niveaux d’APL – Département {DEP_CODE}"
+)
 
-    fig_hist_dep = px.histogram(
-        df_dep,
-        x="APL aux médecins généralistes",
-        nbins=30,
-        color_discrete_sequence=[PALETTE[0]],
-        labels={"APL aux médecins généralistes": "APL"},
-        title=f"Répartition des niveaux d’APL – Département {DEP_CODE}"
-    )
+fig_hist_dep.update_layout(
+    height=420,
+    title_x=0.5,
+    yaxis_title="Nombre de communes",
+    xaxis_title="APL",
+    bargap=0.15
+)
 
-    fig_hist_dep.update_layout(title_x=0.5)
-    st.plotly_chart(fig_hist_dep, use_container_width=True)
+fig_hist_dep.update_traces(
+    hovertemplate=
+    "APL : %{x:.2f}<br>"
+    "Nombre de communes : %{y}<extra></extra>"
+)
+
+col_viz.plotly_chart(fig_hist_dep, use_container_width=True)
+
+
+
+
 
 with col_text:
 
     st.markdown(f"""
 ### Lecture
+L’histogramme permet d’examiner la distribution des niveaux d’APL entre les communes d'un département.
 
-Ce graphique montre la répartition des niveaux d’APL entre les communes du département
-**{DEP_CODE}**.
+La majorité des communes se situent dans une plage de valeurs relativement resserrée, avec peu de communes présentant des APL très élevées ou très faibles malgré quelques valeurs extrêmes. Cela traduit une accessibilité globalement faible mais assez homogène à l’échelle du département.
 
-Lorsque les valeurs sont proches les unes des autres, la situation est relativement
-homogène. À l’inverse, une distribution étalée indique des écarts importants entre
-les communes.
+Cette lecture confirme ce qui était suggéré par la carte : la situation du Loiret ne s’explique pas par quelques communes très mal dotées, mais par un niveau d’accessibilité modérément faible partagé par un grand nombre de communes.
 
-Cette visualisation permet de mieux comprendre si les difficultés observées dans le
-département concernent l’ensemble du territoire ou seulement certaines communes.
+Ainsi, la faiblesse moyenne de l’APL observée dans le département correspond à une situation largement répandue sur le territoire.
 """)
 
 
-#####
 df_dep_stats = (
     generaliste_2023
     .groupby("Departement")
@@ -459,12 +505,15 @@ df_dep_stats["quartile_apl"] = pd.Categorical(
 df_focus = df_dep_stats[df_dep_stats["Departement"] == DEP_CODE]
 
 
+
 couleurs_quartiles = {
     "APL très faible": PALETTE[0],   # bleu foncé
     "APL faible": PALETTE[1],        # bleu moyen
     "APL intermédiaire": PALETTE[3], # vert d’eau
     "APL élevée": PALETTE[4]         # très clair
 }
+quartile_focus = df_focus["quartile_apl"].values[0]
+color_focus = couleurs_quartiles[quartile_focus]
 
 st.divider()
 st.subheader(
@@ -504,15 +553,15 @@ with col_viz:
     )
 
     fig_scatter.data[-1].update(
-        marker=dict(
-            symbol="diamond",
-            color="#2B41C0",
-            size=22,
-            line=dict(width=3, color="black")
-        ),
-        name=f"Département sélectionné ({DEP_CODE})",
-        showlegend=True
-    )
+    marker=dict(
+        symbol="diamond",
+        color=color_focus,   # ← couleur cohérente
+        size=22,
+        line=dict(width=2, color="black")
+    ),
+    name=f"Département sélectionné ({DEP_CODE})",
+    showlegend=True
+)
 
     fig_scatter.update_traces(
     hovertemplate=
@@ -537,23 +586,16 @@ with col_text:
     st.markdown("""
 ### Lecture
 
-Ce graphique compare les départements selon leur niveau moyen d’accessibilité aux
-médecins généralistes et les différences observées entre leurs communes.
+Ce graphique permet de comparer les départements entre eux selon deux dimensions : leur niveau moyen d’APL et la dispersion des valeurs d’APL entre leurs communes.
 
-Les départements situés à gauche présentent en moyenne une accessibilité plus faible.
-Lorsque cette faible accessibilité s’accompagne d’une dispersion limitée, cela indique
-une situation similaire sur l’ensemble du département. À l’inverse, une forte dispersion
-traduit des contrastes internes plus marqués.
+Le Loiret se situe dans une zone caractérisée par une APL moyenne faible associée à une dispersion limitée. Cela signifie que, par rapport aux autres départements, il cumule une accessibilité moyenne défavorable sans pour autant présenter de fortes inégalités internes.
 
-Ce graphique permet ainsi d’identifier différents profils départementaux, en allant
-au-delà d’une simple lecture cartographique.
+Contrairement à certains départements où une moyenne correcte masque de forts contrastes entre communes, le Loiret présente une situation plus uniforme. La difficulté d’accès aux médecins généralistes y est donc relativement généralisée à l’échelle départementale.
+
+Ce positionnement synthétise les résultats observés sur la carte et l’histogramme et confirme la cohérence de l’analyse menée aux différentes échelles.
+
 """)
 
-
-
-# =================================================
-# Conclusion (inchangée)
-# =================================================
 st.divider()
 st.subheader("Conclusion")
 
