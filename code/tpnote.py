@@ -254,6 +254,10 @@ with col_text:
         .head(10)
         [["Département", "Nombre de communes"]]
     )
+    top10_table = top10_table.rename(
+    columns={"Nombre de communes": "Nb"}
+)
+
 
     st.markdown("""
     Cette carte à l’échelle nationale permet d’identifier les communes dont l’APL est inférieure au seuil retenu, ici fixé à 1,90 consultation par an et par habitant, considéré comme un niveau faible d’accessibilité.
@@ -263,7 +267,46 @@ Les communes colorées correspondent à celles situées sous ce seuil, tandis qu
 Le Loiret (45) apparaît clairement parmi ces départements. Cela indique que les situations de faible accessibilité y sont nombreuses et ne relèvent pas de cas isolés. On va donc poursuivre l’analyse en se focalisant sur ce département afin d’explorer plus en détail les variations locales d’APL.
     """)
 
-    st.dataframe(top10_table, hide_index=True, use_container_width=True)
+        # découpe du tableau en deux parties (5 + 5)
+    left_table = top10_table.iloc[:5]
+    right_table = top10_table.iloc[5:]
+
+    col_tab1, col_tab2 = st.columns(2)
+
+    with col_tab1:
+        st.dataframe(
+            left_table,
+            hide_index=True,
+            column_config={
+        "Département": st.column_config.TextColumn(
+            "Département",
+            width="medium"
+        ),
+        "Nb": st.column_config.NumberColumn(
+            "Nb",
+            width="small"
+        )
+    },
+            use_container_width=True
+        )
+
+    with col_tab2:
+        st.dataframe(
+            right_table,
+            hide_index=True,
+            column_config={
+        "Département": st.column_config.TextColumn(
+            "Département",
+            width="medium"
+        ),
+        "Nb": st.column_config.NumberColumn(
+            "Nb",
+            width="small"
+        )
+    },
+            use_container_width=True
+        )
+
 
 
 
@@ -304,8 +347,7 @@ with col_text2:
 
     st.markdown("""
     ### Lecture
-    Cette carte permet d’analyser la répartition spatiale de l’APL à l’intérieur d'un département en comparant chaque commune au seuil retenu.
-
+    
 Dans le Loiret, une large partie des communes présente une APL inférieure ou proche du seuil. Les communes mieux dotées existent, mais elles restent minoritaires et ne forment pas de pôles très marqués. Les écarts observés sont donc réels, mais relativement limités dans l’espace.
 
 Cette configuration suggère que la faible accessibilité n’est pas concentrée sur un secteur précis du département. Elle concerne une grande partie du territoire, ce qui renforce l’idée d’un problème structurel plutôt que localisé.
