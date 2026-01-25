@@ -37,7 +37,7 @@ st.set_page_config(
 
 
 st.title("Accessibilité potentielle localisée (APL)")
-st.caption("Médecins généralistes – France métropolitaine (2023)")
+st.caption("Bouhafs Andalouse - Boukhari Sarah")
 
 
 
